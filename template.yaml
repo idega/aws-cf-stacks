@@ -10,7 +10,7 @@ Resources:
     #checkov:skip=CKV_AWS_18: "This bucket is private and only for storing logs"
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: !Sub ${ProductDomain}-logs'
+      BucketName: !Sub ${ProductDomain}-logs
       PublicAccessBlockConfiguration:
         BlockPublicAcls : true
         BlockPublicPolicy : true
@@ -93,9 +93,6 @@ Resources:
     Type: 'AWS::CloudFront::Distribution'
     Properties:
       DistributionConfig: 
-          Aliases:
-            - !Ref ProductDomain
-            - !Sub www.${ProductDomain}
           CustomErrorResponses:
             - ErrorCode: 404
               ResponseCode: 200
