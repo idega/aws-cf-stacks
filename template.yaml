@@ -36,14 +36,8 @@ Resources:
         BlockPublicPolicy : true
         IgnorePublicAcls : true
         RestrictPublicBuckets : true
-      LoggingConfiguration:
-        DestinationBucketName: !Ref ProductLogsBucket
-        LogFilePrefix: !Sub "${AWS::StackName}-ui-s3-origin"
       VersioningConfiguration:
         Status: Enabled
-      WebsiteConfiguration:
-        IndexDocument: index.html
-        ErrorDocument: 404.html
     DeletionPolicy: Delete
     UpdateReplacePolicy: Retain
 
@@ -113,7 +107,7 @@ Resources:
             ViewerProtocolPolicy: redirect-to-https
           DefaultRootObject: index.html
           Enabled: true
-          HttpVersion: http1.1
+          HttpVersion: http2
           Origins:
             - DomainName: !GetAtt ProductBucket.RegionalDomainName
               Id: !Sub "${AWS::StackName}-ui-s3-origin"
