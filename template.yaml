@@ -12,13 +12,16 @@ Parameters:
   ProductDomainCertARN:
     Description: A domain certificate id. For now it stays manual.
     Type: String
+  ProductAPIDomain:
+    Default: URI where product API is located
+    Type: String
 Resources:
   # The Amazon S3 bucket into which access logs from S3 (for the application) and CloudFront will be put
   ProductLogsBucket:
     #checkov:skip=CKV_AWS_18: "This bucket is private and only for storing logs"
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: !Sub ${ProductDomain}-logs
+      BucketName: !Sub cf-logs-${ProductDomain}
       PublicAccessBlockConfiguration:
         BlockPublicAcls : true
         BlockPublicPolicy : true
@@ -107,17 +110,6 @@ Resources:
             - ErrorCode: 403
               ResponseCode: 200
               ResponsePagePath: /index.html
-          DefaultCacheBehavior:
-            AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-            CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
-            OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
-            ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
-            SmoothStreaming: false
-            TargetOriginId: !Sub "${AWS::StackName}-ui-s3-origin"
-            ViewerProtocolPolicy: redirect-to-https
           DefaultRootObject: index.html
           Enabled: true
           HttpVersion: http2
@@ -126,6 +118,84 @@ Resources:
               Id: !Sub "${AWS::StackName}-ui-s3-origin"
               OriginAccessControlId: !GetAtt ProductCloudFrontOriginAccessControl.Id
               S3OriginConfig: {}
+            - DomainName: !Ref ProductAPIDomain
+              Id: !Sub "${AWS::StackName}-api-ec2-origin"
+              CustomOriginConfig:
+                HTTPPort: 80
+                HTTPSPort: 443
+                OriginProtocolPolicy: https-only
+                OriginSSLProtocols: 
+                - TLSv1.2
+          DefaultCacheBehavior:
+            AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - POST
+              - PATCH
+              - DELETE
+            TargetOriginId: !Sub "${AWS::StackName}-api-ec2-origin"
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Disabled
+            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # AllViewer policy
+            ResponseHeadersPolicyId: eaab4381-ed33-4a86-88ca-d9558dc6cd63 # CORS with preflight and security headers
+            ViewerProtocolPolicy: redirect-to-https
+          CacheBehaviors:
+            - PathPattern: /index.html # HTML
+              Compress: true
+              AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              TargetOriginId: !Sub "${AWS::StackName}-ui-s3-origin"
+              CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
+              OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
+              ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
+              ViewerProtocolPolicy: redirect-to-https
+            - PathPattern: /index.*.css # CSS
+              Compress: true
+              AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              TargetOriginId: !Sub "${AWS::StackName}-ui-s3-origin"
+              CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
+              OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
+              ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
+              ViewerProtocolPolicy: redirect-to-https
+            - PathPattern: /index.bundle.js # Javascript
+              Compress: true
+              AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              TargetOriginId: !Sub "${AWS::StackName}-ui-s3-origin"
+              CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
+              OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
+              ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
+              ViewerProtocolPolicy: redirect-to-https
+            - PathPattern: /fonts/* # Fonts
+              Compress: true
+              AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              TargetOriginId: !Sub "${AWS::StackName}-ui-s3-origin"
+              CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
+              OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
+              ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
+              ViewerProtocolPolicy: redirect-to-https
+            - PathPattern: /img/* # Images
+              Compress: true
+              AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              TargetOriginId: !Sub "${AWS::StackName}-ui-s3-origin"
+              CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # CachingOptimized
+              OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf # CORS-S3Origin
+              ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # SecurityHeadersPolicy
+              ViewerProtocolPolicy: redirect-to-https
           Logging:
             Bucket: !GetAtt ProductLogsBucket.RegionalDomainName
             Prefix: !Sub "${AWS::StackName}-ui-s3-origin"
