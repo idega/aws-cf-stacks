@@ -137,7 +137,7 @@ Resources:
               - DELETE
             TargetOriginId: !Sub "${AWS::StackName}-api-ec2-origin"
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Disabled
-            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # AllViewer policy
+            OriginRequestPolicyId: 59781a5b-3903-41f3-afcb-af62929ccde1 # CORS Custom Origin policy
             ResponseHeadersPolicyId: eaab4381-ed33-4a86-88ca-d9558dc6cd63 # CORS with preflight and security headers
             ViewerProtocolPolicy: redirect-to-https
           CacheBehaviors:
