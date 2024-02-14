@@ -1,0 +1,12 @@
+[
+    {
+        "ParameterKey": "ProductDomainCertARN",
+        "ParameterValue": "arn:aws:acm:us-east-1:987493770652:certificate/98d574a7-b248-4494-bc0d-bc35fedbb899"
+    }, {
+        "ParameterKey": "ProductDomain",
+        "ParameterValue": "flen.test.idega.is"
+    }, {
+        "ParameterKey": "ProductAPIDomain",
+        "ParameterValue": "test.flen.idega.is"
+    }
+]
