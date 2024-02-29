@@ -10,9 +10,9 @@
         "ParameterValue": "arn:aws:acm:us-east-1:987493770652:certificate/f8caf2f1-f53d-4d49-98f4-5520e6fd7b15"
     }, {
         "ParameterKey": "ProductDomain",
-        "ParameterValue": "gamli.golf.idega.org"
+        "ParameterValue": "gamli.idega.org"
     }, {
         "ParameterKey": "ProductAPIDomain",
-        "ParameterValue": "ep.gamli.golf.idega.org"
+        "ParameterValue": "ep.gamli.idega.org"
     }
 ]
