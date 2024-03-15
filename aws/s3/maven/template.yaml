@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  IWMavenRepoDomain:
+    Description: A domain name
+    Type: String
+    Default: repository.idega.com
+  
+Resources:
+  IWMavenRepoBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref IWMavenRepoDomain
+      VersioningConfiguration:
+        Status: Enabled
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+
+  IWMavenRepoReadersGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: iw.maven-repo-read.sg
+      Policies:
+        - PolicyName: IWMavenRepoReadAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - s3:GetObject
+              Resource: !Sub ${IWMavenRepoBucket.Arn}/*
+
+  IWMavenRepoFullAccessGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: iw.maven-repo-all.sg
+      Policies:
+        - PolicyName: IWMavenRepoAllAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:PutObjectAcl
+              Resource: !Sub ${IWMavenRepoBucket.Arn}/*
