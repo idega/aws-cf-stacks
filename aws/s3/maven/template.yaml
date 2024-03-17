@@ -27,7 +27,10 @@ Resources:
             - Effect: Allow
               Action:
               - s3:GetObject
-              Resource: !Sub ${IWMavenRepoBucket.Arn}/*
+              - s3:ListBucket
+              Resource: 
+              - !Sub ${IWMavenRepoBucket.Arn}
+              - !Sub ${IWMavenRepoBucket.Arn}/*
 
   IWMavenRepoFullAccessGroup:
     Type: AWS::IAM::Group
@@ -41,6 +44,10 @@ Resources:
             - Effect: Allow
               Action:
               - s3:GetObject
+              - s3:ListBucket
+              - s3:DeleteObject
               - s3:PutObject
               - s3:PutObjectAcl
-              Resource: !Sub ${IWMavenRepoBucket.Arn}/*
+              Resource: 
+              - !Sub ${IWMavenRepoBucket.Arn}
+              - !Sub ${IWMavenRepoBucket.Arn}/*
