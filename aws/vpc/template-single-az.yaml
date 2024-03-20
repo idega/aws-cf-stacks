@@ -1,0 +1,214 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  IWPrivateKeyName:
+    Description: Private Key Name
+    Type: String
+  IWAMIID:
+    Description: AMI ID
+    Type: String
+  IWVPCCIDR:
+    Description: CIDR
+    Type: String
+  IWPrivateAZoneSubnetRange:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the A Availability Zone
+    Type: String
+  IWPublicAZoneSubnetRange:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the A Availability Zone
+    Type: String
+Resources:
+  IWVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref IWVPCCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}-vpc"
+
+  IWInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}-internet-gateway"
+
+  IWInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref IWInternetGateway
+      VpcId: !Ref IWVPC
+
+  #
+  # Private Subnets
+  #
+  IWPrivateAZoneSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref IWVPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !Ref IWPrivateAZoneSubnetRange
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-private-subnet"
+
+  #
+  # Public Subnets
+  #
+  IWPublicAZoneSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref IWVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref IWPublicAZoneSubnetRange
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-public-subnet"
+
+  #
+  # Elastic IP addresses
+  # Allowed to create new one for now. Other EIPs will be attached later
+  #
+  IWAZoneElasticIP:
+    Type: AWS::EC2::EIP
+    DependsOn: IWInternetGatewayAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-eip"
+
+  #
+  # NAT gateways
+  #
+  IWAZoneNatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt IWAZoneElasticIP.AllocationId
+      SubnetId: !Ref IWPublicAZoneSubnet
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-nat-gateway"
+
+  #
+  # Route tables
+  #
+  IWPrivateAZoneRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref IWVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-route-table"
+
+  #
+  # Route table associations
+  #
+  IWPrivateAZoneSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref IWPrivateAZoneRouteTable
+      SubnetId: !Ref IWPrivateAZoneSubnet
+
+  #
+  # Routes
+  #
+  IWPrivateAZoneRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref IWPrivateAZoneRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref IWAZoneNatGateway
+
+  #
+  # Security Groups
+  #
+  IWWebSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId:
+        Ref: IWVPC
+      GroupName: "iw-http-sg"
+      GroupDescription: Enable HTTP(S) access via user-defined port
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIp: 0.0.0.0/0
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+
+  #
+  # Load Balancer NGINX that forwards connections to private zone, automatic, initialized via script?
+  #
+  IWLoadBalancerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref IWAMIID
+      InstanceType: t3.micro
+      SubnetId: !Ref IWPublicAZoneSubnet
+      KeyName: 
+        Ref: IWPrivateKeyName
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-load-balancer"
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash -xe
+          #
+          # Packages
+          #
+          sudo yum -y install epel-release
+          sudo yum -y install \
+              bc \
+              certbot python3-certbot-nginx \
+              elinks \
+              firewalld \
+              gettext \
+              git \
+              htop \
+              nginx \
+              npm \
+              openscap openscap-scanner openscap-utils \
+              scap-security-guide \
+              screen \
+              s3cmd \
+              vim \
+              wget \
+              unzip
+
+          # 
+          # EC2 Instance Connect
+          # Might need no additional access from anywhere else
+          # 
+          wget https://amazon-ec2-instance-connect-us-west-2.s3.us-west-2.amazonaws.com/latest/linux_amd64/ec2-instance-connect.rpm
+          wget https://amazon-ec2-instance-connect-us-west-2.s3.us-west-2.amazonaws.com/latest/linux_amd64/ec2-instance-connect-selinux.noarch.rpm
+          sudo yum install -y ec2-instance-connect.rpm
+          sudo yum install -y ec2-instance-connect-selinux.noarch.rpm
+
+          #
+          # Services
+          #
+          sudo systemctl enable firewalld
+          sudo systemctl enable nginx
+          sudo systemctl restart firewalld
+          sudo systemctl restart nginx
+
+          #
+          # Firewall 
+          #
+          sudo firewall-cmd --set-default-zone=drop
+          sudo firewall-cmd --add-service ssh
+          sudo firewall-cmd --add-service ssh --permanent
+          sudo firewall-cmd --add-service http
+          sudo firewall-cmd --add-service http --permanent
+          sudo firewall-cmd --add-service https
+          sudo firewall-cmd --add-service https --permanent
+
+#
+# VPN server with automatic configuration
+#
