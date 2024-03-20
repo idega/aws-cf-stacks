@@ -1,5 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
+  ECConnectInstanceIP:
+    Description: EC2 Connect Instance service IP in region
+    Type: String
   IWPrivateKeyName:
     Description: Private Key Name
     Type: String
@@ -103,6 +106,15 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-${AWS::Region}a-route-table"
 
+
+  IWPublicAZoneRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref IWVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-public-route-table"
+
   #
   # Route table associations
   #
@@ -111,6 +123,12 @@ Resources:
     Properties:
       RouteTableId: !Ref IWPrivateAZoneRouteTable
       SubnetId: !Ref IWPrivateAZoneSubnet
+
+  IWPublicAZoneSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref IWPublicAZoneRouteTable
+      SubnetId: !Ref IWPublicAZoneSubnet
 
   #
   # Routes
@@ -122,6 +140,14 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref IWAZoneNatGateway
 
+  IWPublicAZoneRoute:
+    Type: AWS::EC2::Route
+    DependsOn: IWInternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref IWPublicAZoneRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IWInternetGateway
+
   #
   # Security Groups
   #
@@ -130,17 +156,39 @@ Resources:
     Properties:
       VpcId:
         Ref: IWVPC
-      GroupName: "iw-http-sg"
-      GroupDescription: Enable HTTP(S) access via user-defined port
+      GroupName: !Sub "${AWS::StackName}-${AWS::Region}a-web.sg"
+      GroupDescription: HTTP & HTTPS access
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           FromPort: 80
           IpProtocol: tcp
           ToPort: 80
+          Description: HTTP
         - CidrIp: 0.0.0.0/0
           FromPort: 443
           IpProtocol: tcp
           ToPort: 443
+          Description: HTTPS
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-web.sg"
+
+  IWShellSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId:
+        Ref: IWVPC
+      GroupName: !Sub "${AWS::StackName}-${AWS::Region}a-ssh.sg"
+      GroupDescription: SSH access
+      SecurityGroupIngress:
+        - CidrIp: !Ref ECConnectInstanceIP
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+          Description: SSH
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-ssh.sg"
 
   #
   # Load Balancer NGINX that forwards connections to private zone, automatic, initialized via script?
@@ -153,6 +201,9 @@ Resources:
       SubnetId: !Ref IWPublicAZoneSubnet
       KeyName: 
         Ref: IWPrivateKeyName
+      SecurityGroupIds: 
+        - !GetAtt IWWebSecurityGroup.GroupId
+        - !GetAtt IWShellSecurityGroup.GroupId
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-${AWS::Region}a-load-balancer"
@@ -209,6 +260,28 @@ Resources:
           sudo firewall-cmd --add-service https
           sudo firewall-cmd --add-service https --permanent
 
+          #
+          # PCI-DSS benchmark
+          #
+          sudo oscap xccdf eval \
+            --fetch-remote-resources \
+            --remediate \
+            --profile xccdf_org.ssgproject.content_profile_pci-dss \
+            --results scan-results.xml \
+            /usr/share/xml/scap/ssg/content/ssg-almalinux9-ds.xml
+
 #
 # VPN server with automatic configuration
+#
+
+#
+# NACL for subnets
+#
+
+#
+# DNS name resolution in private & public subnet. Might be not required due to "hosts" nature
+#
+
+#
+# Static IP addereses for instaces
 #
