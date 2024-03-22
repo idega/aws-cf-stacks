@@ -1,22 +1,31 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
+  IWVPNServerCertificateARN:
+    Description: Link to certificate in AWS Certificate Manager for VPN server
+    Type: String
+  IWClientRootCertificateChainArn:
+    Description: Link to certificate in AWS Certificate Manager for VPN client
+    Type: String
   ECConnectInstanceIP:
     Description: EC2 Connect Instance service IP in region
     Type: String
-  IWPrivateKeyName:
+  IWAMIPrivateKeyName:
     Description: Private Key Name
     Type: String
   IWAMIID:
     Description: AMI ID
     Type: String
   IWVPCCIDR:
-    Description: CIDR
+    Description: CIDR block for VPC network
+    Type: String
+  IWVPNCIDR:
+    Description: CIDR block for VPN network
     Type: String
   IWPrivateAZoneSubnetRange:
-    Description: Please enter the IP range (CIDR notation) for the private subnet in the A Availability Zone
+    Description: CIDR for private subnet in A zone
     Type: String
   IWPublicAZoneSubnetRange:
-    Description: Please enter the IP range (CIDR notation) for the private subnet in the A Availability Zone
+    Description: CIDR for public subnet in A zone
     Type: String
 Resources:
   IWVPC:
@@ -200,7 +209,7 @@ Resources:
       InstanceType: t3.micro
       SubnetId: !Ref IWPublicAZoneSubnet
       KeyName: 
-        Ref: IWPrivateKeyName
+        Ref: IWAMIPrivateKeyName
       SecurityGroupIds: 
         - !GetAtt IWWebSecurityGroup.GroupId
         - !GetAtt IWShellSecurityGroup.GroupId
@@ -270,9 +279,48 @@ Resources:
             --results scan-results.xml \
             /usr/share/xml/scap/ssg/content/ssg-almalinux9-ds.xml
 
-#
-# VPN server with automatic configuration
-#
+  #
+  # VPN server with automatic configuration
+  #
+  IWClientVPNInstance:
+    Type: AWS::EC2::ClientVpnEndpoint
+    Properties:
+      AuthenticationOptions:
+        - Type: certificate-authentication
+          MutualAuthentication:
+            ClientRootCertificateChainArn: !Ref IWClientRootCertificateChainArn        
+      ClientCidrBlock: !Ref IWVPNCIDR
+      ClientLoginBannerOptions:
+        Enabled: true 
+        BannerText: !Sub "You are now connected to ${AWS::Region}a VPC"
+      ConnectionLogOptions: 
+        Enabled: false
+      Description: !Sub "VPN server for ${AWS::Region}a zone"
+      SelfServicePortal: String
+      ServerCertificateArn: !Ref IWVPNServerCertificateARN
+      TagSpecifications:
+        - ResourceType: client-vpn-endpoint
+          Tags:
+            - Key: Name
+              Value: !Sub "${AWS::StackName}-${AWS::Region}a-vpn"
+      VpcId: !Ref IWVPC
+      VpnPort: 443
+
+  IWClientVpnTargetNetworkAZoneAssociation:
+    Type: AWS::EC2::ClientVpnTargetNetworkAssociation
+    Properties:
+      ClientVpnEndpointId: !Ref IWClientVPNInstance
+      SubnetId: !Ref IWPrivateAZoneSubnet
+
+  IWClientVpnAuthorizationRule:
+    Type: "AWS::EC2::ClientVpnAuthorizationRule"
+    Properties:
+      ClientVpnEndpointId: 
+        Ref: IWClientVPNInstance
+      AuthorizeAllGroups: true
+      TargetNetworkCidr: "0.0.0.0/0"
+      Description: !Sub "${AWS::StackName}-${AWS::Region}a-vpn-auth-rule"
+
 
 #
 # NACL for subnets
