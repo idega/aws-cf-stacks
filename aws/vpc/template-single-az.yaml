@@ -199,6 +199,23 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-${AWS::Region}a-ssh.sg"
 
+  IWVPNShellSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId:
+        Ref: IWVPC
+      GroupName: !Sub "${AWS::StackName}-${AWS::Region}a-ssh-inner.sg"
+      GroupDescription: SSH access
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: 22
+          IpProtocol: tcp
+          ToPort: 22
+          Description: SSH
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-ssh-inner.sg"
+
   #
   # Load Balancer NGINX that forwards connections to private zone, automatic, initialized via script?
   #
@@ -305,6 +322,8 @@ Resources:
               Value: !Sub "${AWS::StackName}-${AWS::Region}a-vpn"
       VpcId: !Ref IWVPC
       VpnPort: 443
+      SecurityGroupIds:
+           - !GetAtt IWWebSecurityGroup.GroupId
 
   IWClientVpnTargetNetworkAZoneAssociation:
     Type: AWS::EC2::ClientVpnTargetNetworkAssociation
