@@ -182,6 +182,23 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-${AWS::Region}a-web.sg"
 
+  IWTomcatSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId:
+        Ref: IWVPC
+      GroupName: !Sub "${AWS::StackName}-${AWS::Region}a-tomcat.sg"
+      GroupDescription: Tomcat access in private zone
+      SecurityGroupIngress:
+        - CidrIp: !Ref IWVPCCIDR
+          FromPort: 8080
+          IpProtocol: tcp
+          ToPort: 8099
+          Description: Tomcat access in private zone
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-${AWS::Region}a-tomcat.sg"
+
   IWShellSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -207,7 +224,7 @@ Resources:
       GroupName: !Sub "${AWS::StackName}-${AWS::Region}a-ssh-vpn.sg"
       GroupDescription: SSH access
       SecurityGroupIngress:
-        - CidrIp: !Ref IWVPNCIDR
+        - CidrIp: !Ref IWVPCCIDR
           FromPort: 22
           IpProtocol: tcp
           ToPort: 22
@@ -266,6 +283,11 @@ Resources:
           wget https://amazon-ec2-instance-connect-us-west-2.s3.us-west-2.amazonaws.com/latest/linux_amd64/ec2-instance-connect-selinux.noarch.rpm
           sudo yum install -y ec2-instance-connect.rpm
           sudo yum install -y ec2-instance-connect-selinux.noarch.rpm
+
+          #
+          # SELinux
+          #
+          setsebool httpd_can_network_connect on
 
           #
           # Services
