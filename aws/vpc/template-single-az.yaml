@@ -363,16 +363,3 @@ Resources:
       AuthorizeAllGroups: true
       TargetNetworkCidr: "0.0.0.0/0"
       Description: !Sub "${AWS::StackName}-${AWS::Region}a-vpn-auth-rule"
-
-
-#
-# NACL for subnets
-#
-
-#
-# DNS name resolution in private & public subnet. Might be not required due to "hosts" nature
-#
-
-#
-# Static IP addereses for instaces
-#
