@@ -288,6 +288,7 @@ Resources:
           # SELinux
           #
           setsebool httpd_can_network_connect on
+          setsebool -P httpd_can_network_connect on
 
           #
           # Services
@@ -345,7 +346,8 @@ Resources:
       VpcId: !Ref IWVPC
       VpnPort: 443
       SecurityGroupIds:
-           - !GetAtt IWWebSecurityGroup.GroupId
+        - !GetAtt IWWebSecurityGroup.GroupId
+      SplitTunnel: true
 
   IWClientVpnTargetNetworkAZoneAssociation:
     Type: AWS::EC2::ClientVpnTargetNetworkAssociation
