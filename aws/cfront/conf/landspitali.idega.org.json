@@ -1,0 +1,18 @@
+[
+    {
+        "ParameterKey": "ProductHostedZoneId",
+        "ParameterValue": "Z0560851AJAOGJSCAVHX"
+    }, {
+        "ParameterKey": "CompanyHostedZoneName",
+        "ParameterValue": "idega.org"
+    }, {
+        "ParameterKey": "ProductDomainCertARN",
+        "ParameterValue": "arn:aws:acm:us-east-1:987493770652:certificate/f8caf2f1-f53d-4d49-98f4-5520e6fd7b15"
+    }, {
+        "ParameterKey": "ProductDomain",
+        "ParameterValue": "landspitali.idega.org"
+    }, {
+        "ParameterKey": "ProductAPIDomain",
+        "ParameterValue": "old.landspitali.idega.org"
+    }
+]
